@@ -5,15 +5,22 @@ import (
 	"errors"
 	"io/fs"
 	"log"
+	"strings"
 
 	"GoCall_api/db"
 	"GoCall_api/handlers"
 	"GoCall_api/utils"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	// ENV INIT
+	err := utils.CheckEnvLoaded(); if err != nil {
+		log.Fatal(err)
+	}
+	// --------------------------------
 	// DATABASE INIT
 	// check path data exists
 	dataExists, err := exists("./data")
@@ -29,6 +36,14 @@ func main() {
 	handlers.InitValidator()
 	// --------------------------------
 	router := gin.Default()
+
+	router.Use(cors.New(cors.Config{
+        AllowOrigins:     strings.Split(os.Getenv("ALLOW_ORIGINS"), ","), // Allow sources. By default: http://127.0.0.1:1420 http://localhost:1420
+        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+    }))
 
 	api := router.Group("/api")
 	{

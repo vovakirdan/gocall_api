@@ -7,9 +7,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtKey = []byte(os.Getenv("SECRET_KEY"))  // todo check in main if .env set up
+var jwtKey []byte
 
 func GenerateJWT(userID int) (string, error) {
+	jwtKey = []byte(os.Getenv("SECRET_KEY"))
 	claims := &jwt.MapClaims{
 		"user_id": userID,
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
