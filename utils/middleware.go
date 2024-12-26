@@ -3,6 +3,7 @@ package utils
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -61,4 +62,37 @@ func JWTMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func RefreshToken(c *gin.Context) {
+	tokenString := c.GetHeader("Authorization")[7:] // remove "Bearer "
+
+	claims := jwt.MapClaims{}
+	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(jwtKey), nil
+	})
+
+	if err != nil {
+		c.JSON(401, gin.H{"error": "Invalid or expired token"})
+		return
+	}
+
+	// define if it is a desktop
+	isDesktopClient := c.Request.Header.Get("X-Client-Type") == "desktop"
+
+	// Set expires life of token
+	expiration := time.Hour * 24 // 24 hours for web
+	if isDesktopClient {
+		expiration = time.Hour * 24 * 30 // 30 days for desktop
+	}
+
+	// create new token
+	claims["exp"] = time.Now().Add(expiration).Unix()
+	newToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtKey))
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to create new token"})
+		return
+	}
+
+	c.JSON(200, gin.H{"token": newToken})
 }

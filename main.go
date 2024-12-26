@@ -50,6 +50,7 @@ func main() {
 		// with no auth
 		api.POST("/auth/login", handlers.Login)
 		api.POST("/auth/register", handlers.Register)
+		api.POST("/auth/refresh", utils.RefreshToken)
 
 		// With auth
 		protected := api.Group("/")
