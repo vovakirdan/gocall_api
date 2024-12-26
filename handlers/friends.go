@@ -12,7 +12,7 @@ import (
 func GetFriends(c *gin.Context) {
 	// parse user from JWT
 
-	userID, _ := c.Get("user_id") // Middleware should set user_id
+	userID, _ := c.Get("user_id") // *Middleware should set user_id
 	uid := userID.(uint)
 
 	var friends []db.User
@@ -31,7 +31,7 @@ func GetFriends(c *gin.Context) {
 }
 
 func AddFriend(c *gin.Context) {
-	userID, _ := c.Get("user_id") // Middleware should set user_id
+	userID, _ := c.Get("user_id") // *Middleware should set user_id
 	uid := userID.(uint)
 
 	var req struct {
@@ -69,7 +69,7 @@ func AddFriend(c *gin.Context) {
 }
 
 func RemoveFriend(c *gin.Context) {
-	userID, _ := c.Get("user_id") // Middleware should set user_id
+	userID, _ := c.Get("user_id") // *Middleware should set user_id
 	uid := userID.(uint)
 
 	friendID, err := strconv.Atoi(c.Param("id"))

@@ -32,9 +32,9 @@ func main() {
 		api.GET("/friends", handlers.GetFriends)
 		api.POST("/friends/add", handlers.AddFriend)
 		api.DELETE("/friends/remove", handlers.RemoveFriend)
-		// api.GET("/rooms", handlers.GetRooms)
-		// api.POST("/rooms/create", handlers.CreateRoom)
-		// api.DELETE("/rooms/:id", handlers.DeleteRoom)
+		api.GET("/rooms", handlers.GetRooms)
+		api.POST("/rooms/create", handlers.CreateRoom)
+		api.DELETE("/rooms/:id", handlers.DeleteRoom)
 	}
 
 	router.Run(":8080")
