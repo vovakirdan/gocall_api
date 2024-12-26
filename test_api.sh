@@ -29,8 +29,11 @@ test_login() {
         -d '{"username":"testuser","password":"testpass"}')
     echo "$RESPONSE"
     
-    # Извлекаем токен из ответа
     TOKEN=$(echo "$RESPONSE" | jq -r '.token')
+    if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+        echo "Failed to login. Token is empty."
+        exit 1
+    fi
     echo "Extracted Token: $TOKEN"
 }
 

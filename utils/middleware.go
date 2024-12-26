@@ -11,7 +11,7 @@ import (
 // JWTMiddleware validates the JWT token and extracts user_id
 func JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authoriztion")
+		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authoriztion header missing"})
 			c.Abort()
