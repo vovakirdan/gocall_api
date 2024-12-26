@@ -40,7 +40,7 @@ func main() {
 	router.Use(cors.New(cors.Config{
         AllowOrigins:     strings.Split(os.Getenv("ALLOW_ORIGINS"), ","), // Allow sources. By default: http://127.0.0.1:1420 http://localhost:1420
         AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-        AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+	AllowHeaders:	  []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
         ExposeHeaders:    []string{"Content-Length"},
         AllowCredentials: true,
     }))
