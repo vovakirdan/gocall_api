@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	// DATABASE INIT
 	// check path data exists
 	dataExists, err := exists("./data")
 	if err != nil {
@@ -23,7 +24,10 @@ func main() {
 		_ = os.Mkdir("./data", 0700)
 	}
 	db.InitDatabase("./data/gocall.db")
-
+	// --------------------------------
+	// VALIDATOR INIT
+	handlers.InitValidator()
+	// --------------------------------
 	router := gin.Default()
 
 	api := router.Group("/api")
