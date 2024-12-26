@@ -1,2 +1,5 @@
 *.db
 .env
+
+# build
+GoCall_api
