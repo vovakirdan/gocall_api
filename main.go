@@ -56,12 +56,17 @@ func main() {
 		protected := api.Group("/")
 		protected.Use(utils.JWTMiddleware())
 		{
+			// ----------USERS--------------------------
+			protected.GET("/user/id", handlers.GetUserID)
+			// ----------FRIENDS-------------------------
 			protected.GET("/friends", handlers.GetFriends)
 			protected.POST("/friends/add", handlers.AddFriend)
 			protected.DELETE("/friends/remove", handlers.RemoveFriend)
+			// --------ROOMS-------------------------
 			protected.GET("/rooms", handlers.GetRooms)
 			protected.POST("/rooms/create", handlers.CreateRoom)
 			protected.DELETE("/rooms/:id", handlers.DeleteRoom)
+			protected.GET("/rooms/name", handlers.GetRoomByName)
 		}
 	}
 

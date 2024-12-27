@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -31,6 +32,7 @@ type Friend struct {
 // Room represents a room
 type Room struct {
 	ID        uint      `gorm:"primaryKey"`
+	RoomID    string    `gorm:"unique;not null"` // UUID
 	UserID    uint      `gorm:"not null"`
 	Name      string    `gorm:"not null"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
@@ -57,4 +59,10 @@ func InitDatabase(path string) {
 	if err != nil {
 		log.Fatal("Failed to migrate database schema:", err)
 	}
+}
+
+// BeforeCreate hook to generate UUID for Room
+func (r *Room) BeforeCreate(tx *gorm.DB) (err error) {
+	r.RoomID = uuid.New().String()
+	return
 }
