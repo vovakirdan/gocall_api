@@ -14,7 +14,8 @@ var DB *gorm.DB
 // User represents a user in the system
 type User struct {
 	ID uint `gorm:"primaryKey"`
-	Username string `gorm:"unique;not null"`
+	UserID string `gorm:"unique;not null"`  // UUID
+	Username string `gorm:"unique;not null"`  // todo rename everywhere to username
 	PasswordHash string `gorm:"not null"`
 	Name string `gorm:"type:text"`  // may be null
 	Email string `gorm:"type:text"` // may be null
@@ -33,7 +34,7 @@ type Friend struct {
 type Room struct {
 	ID        uint      `gorm:"primaryKey"`
 	RoomID    string    `gorm:"unique;not null"` // UUID
-	UserID    uint      `gorm:"not null"`
+	UserID    string      `gorm:"not null"`  // users UUID
 	Name      string    `gorm:"not null"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
@@ -64,5 +65,10 @@ func InitDatabase(path string) {
 // BeforeCreate hook to generate UUID for Room
 func (r *Room) BeforeCreate(tx *gorm.DB) (err error) {
 	r.RoomID = uuid.New().String()
+	return
+}
+
+func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
+	u.UserID = uuid.New().String()
 	return
 }

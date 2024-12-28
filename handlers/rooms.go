@@ -3,7 +3,6 @@ package handlers
 import (
 	"GoCall_api/db"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,10 +10,14 @@ import (
 // GetRooms retrieves the list of rooms created by the authenticated user
 func GetRooms(c *gin.Context) {
 	userID, _ := c.Get("user_id") // *Middleware should set user_id
-	uid := userID.(uint)
+	var user db.User
+	if err := db.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find user"})
+		return
+	}
 
 	var rooms []db.Room
-	err := db.DB.Where("user_id = ?", uid).Find(&rooms).Error
+	err := db.DB.Where("user_id = ?", user.UserID).Find(&rooms).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch rooms"})
 		return
@@ -34,34 +37,44 @@ func CreateRoom(c *gin.Context) {
 	}
 
 	userID := c.MustGet("user_id").(uint)
-
+	// get userID (uuid) from users
+	var user db.User
+	if err := db.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find user"})
+		return
+	}
 	// create room
 	room := db.Room{
 		Name:   req.Name,
-		UserID: userID,
+		UserID: user.UserID,
 	}
 	if err := db.DB.Create(&room).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create room"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"roomID": room.RoomID, "name": room.Name})
+	c.JSON(http.StatusOK, gin.H{
+		"roomID": room.RoomID,
+		"name": room.Name,
+		"userID": room.UserID,
+	})
 }
 
 // DeleteRoom deletes a room created by the authenticated user
 func DeleteRoom(c *gin.Context) {
 	userID, _ := c.Get("user_id") // *Middleware should set user_id
-	uid := userID.(uint)
 
-	roomID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid room ID"})
+	roomID := c.Param("id")
+
+	var user db.User
+	if err := db.DB.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find user"})
 		return
 	}
 
 	// Check if room belong to use
 	var room db.Room
-	if err := db.DB.Where("id = ? AND user_id = ?", roomID, uid).First(&room).Error; err != nil {
+	if err := db.DB.Where("room_id = ? AND user_id = ?", roomID, user.UserID).First(&room).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
 		return
 	}
