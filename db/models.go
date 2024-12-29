@@ -34,16 +34,19 @@ type Friend struct {
 type Room struct {
 	ID        uint      `gorm:"primaryKey"`
 	RoomID    string    `gorm:"unique;not null"` // UUID
-	UserID    string      `gorm:"not null"`  // users UUID
+	UserID    string    `gorm:"not null"`       // Creator's user UUID
 	Name      string    `gorm:"not null"`
+	Type      string    `gorm:"not null"`       // public, private, secret
+	Password  string    `gorm:"type:text"`      // null if not password-protected
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
 
 // RoomMember represents a member in a room
 type RoomMember struct {
 	ID        uint      `gorm:"primaryKey"`
-	RoomID    uint      `gorm:"not null"`
-	UserID    uint      `gorm:"not null"`
+	RoomID    string    `gorm:"not null"`       // Room's UUID
+	UserID    string    `gorm:"not null"`       // User's UUID
+	Role      string    `gorm:"not null"`       // Role in the room (admin, member, viewer)
 	JoinedAt  time.Time `gorm:"autoCreateTime"`
 }
 

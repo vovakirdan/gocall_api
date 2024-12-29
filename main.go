@@ -65,7 +65,10 @@ func main() {
 			// --------ROOMS-------------------------
 			protected.GET("/rooms", handlers.GetRooms)
 			protected.POST("/rooms/create", handlers.CreateRoom)
+			protected.POST("/rooms/add-user", handlers.AddUserToRoom)
+			protected.GET("/rooms/:id/members", handlers.GetRoomMembers)
 			protected.DELETE("/rooms/:id", handlers.DeleteRoom)
+			protected.PUT("/rooms/:id", handlers.UpdateRoom)
 			protected.GET("/rooms/name", handlers.GetRoomByName)
 		}
 	}

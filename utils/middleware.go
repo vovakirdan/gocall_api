@@ -83,7 +83,7 @@ func RefreshToken(c *gin.Context) {
 	// Set expires life of token
 	expiration := time.Hour * 24 // 24 hours for web
 	if isDesktopClient {
-		expiration = time.Hour * 24 * 30 // 30 days for desktop
+		expiration *= 30 // 30 days for desktop
 	}
 
 	// create new token
