@@ -204,3 +204,15 @@ func GetRoomByName(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"roomID": room.RoomID, "name": room.Name})
 }
+
+func RoomExists(c *gin.Context) {
+    roomID := c.Param("id")
+
+    var room db.Room
+    if err := db.DB.Where("room_id = ?", roomID).First(&room).Error; err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"exists": false, "error": "Room not found"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"exists": true})
+}

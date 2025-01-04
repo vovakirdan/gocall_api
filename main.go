@@ -51,6 +51,7 @@ func main() {
 		api.POST("/auth/login", handlers.Login)
 		api.POST("/auth/register", handlers.Register)
 		api.POST("/auth/refresh", utils.RefreshToken)
+		api.GET("/rooms/:id/exists", handlers.RoomExists)  //! temp remove
 
 		// With auth
 		protected := api.Group("/")
@@ -70,6 +71,7 @@ func main() {
 			protected.DELETE("/rooms/:id", handlers.DeleteRoom)
 			protected.PUT("/rooms/:id", handlers.UpdateRoom)
 			protected.GET("/rooms/name", handlers.GetRoomByName)
+			// protected.GET("/rooms/:id/exists", handlers.RoomExists)
 		}
 	}
 
