@@ -54,7 +54,6 @@ func CreateRoom(c *gin.Context) {
         return
     }
 
-    // Преобразуем userID к uint и получаем UserID как UUID
     userUintID, ok := userID.(uint)
     if !ok {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
@@ -76,6 +75,17 @@ func CreateRoom(c *gin.Context) {
     }
     if err := db.DB.Create(&room).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create room"})
+        return
+    }
+
+    // Add creator as admin in RoomMembers
+    member := db.RoomMember{
+        RoomID: room.RoomID,
+        UserID: user.UserID,
+        Role:   "admin",
+    }
+    if err := db.DB.Create(&member).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add creator to room members"})
         return
     }
 
@@ -114,7 +124,7 @@ func AddUserToRoom(c *gin.Context) {
 
 // GetRoomMembers retrieves the list of members in a room
 func GetRoomMembers(c *gin.Context) {
-	roomID := c.Param("id")
+	roomID := c.Param("roomID")
 
 	var members []db.RoomMember
 	if err := db.DB.Where("room_id = ?", roomID).Find(&members).Error; err != nil {
@@ -122,7 +132,15 @@ func GetRoomMembers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"members": members})
+	var usernames []string
+	for _, member := range members {
+		var user db.User
+		if err := db.DB.Where("user_id = ?", member.UserID).First(&user).Error; err == nil {
+			usernames = append(usernames, user.Username)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"members": usernames})
 }
 
 // DeleteRoom deletes a room created by the authenticated user
@@ -152,12 +170,19 @@ func DeleteRoom(c *gin.Context) {
         return
     }
 
+    // Delete room members
+    if err := db.DB.Where("room_id = ?", roomID).Delete(&db.RoomMember{}).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete room members"})
+        return
+    }
+
+    // Delete room
     if err := db.DB.Delete(&room).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete room"})
         return
     }
 
-    c.JSON(http.StatusOK, gin.H{"message": "Room deleted"})
+    c.JSON(http.StatusOK, gin.H{"message": "Room and associated members deleted"})
 }
 
 // UpdateRoom updates the room details
@@ -279,9 +304,9 @@ func GetInvitedRooms(c *gin.Context) {
         return
     }
 
-    // Retrieve room memberships
+    // Retrieve room memberships where the user is not the creator
     var roomMembers []db.RoomMember
-    if err := db.DB.Where("user_id = ?", user.UserID).Find(&roomMembers).Error; err != nil {
+    if err := db.DB.Where("user_id = ? AND role != ?", user.UserID, "admin").Find(&roomMembers).Error; err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch room memberships"})
         return
     }
