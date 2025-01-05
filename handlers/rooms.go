@@ -220,33 +220,36 @@ func RoomExists(c *gin.Context) {
 // InviteUserToRoom invites a friend to a room
 func InviteUserToRoom(c *gin.Context) {
 	var req struct {
-		RoomID string `json:"roomID" binding:"required"`
-		UserID string `json:"userID" binding:"required"` // UUID of the friend being invited
+		RoomID   string `json:"roomID" binding:"required"`
+		Username string `json:"username" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
 
-	// Check if the room exists
 	var room db.Room
 	if err := db.DB.Where("room_id = ?", req.RoomID).First(&room).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
 		return
 	}
 
-	// Check if the invited user exists
 	var invitedUser db.User
-	if err := db.DB.Where("user_id = ?", req.UserID).First(&invitedUser).Error; err != nil {
+	if err := db.DB.Where("username = ?", req.Username).First(&invitedUser).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	// Add the invited user as a member in the room
+	var existingMember db.RoomMember
+	if err := db.DB.Where("room_id = ? AND user_id = ?", req.RoomID, invitedUser.UserID).First(&existingMember).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "User is already invited to the room"})
+		return
+	}
+
 	member := db.RoomMember{
 		RoomID: req.RoomID,
-		UserID: req.UserID,
-		Role:   "member", // Default role
+		UserID: invitedUser.UserID, // UUID frined
+		Role:   "member",
 	}
 	if err := db.DB.Create(&member).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to invite user to room"})
