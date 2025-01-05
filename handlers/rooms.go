@@ -216,3 +216,87 @@ func RoomExists(c *gin.Context) {
 
     c.JSON(http.StatusOK, gin.H{"exists": true})
 }
+
+// InviteUserToRoom invites a friend to a room
+func InviteUserToRoom(c *gin.Context) {
+	var req struct {
+		RoomID string `json:"roomID" binding:"required"`
+		UserID string `json:"userID" binding:"required"` // UUID of the friend being invited
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	// Check if the room exists
+	var room db.Room
+	if err := db.DB.Where("room_id = ?", req.RoomID).First(&room).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
+		return
+	}
+
+	// Check if the invited user exists
+	var invitedUser db.User
+	if err := db.DB.Where("user_id = ?", req.UserID).First(&invitedUser).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Add the invited user as a member in the room
+	member := db.RoomMember{
+		RoomID: req.RoomID,
+		UserID: req.UserID,
+		Role:   "member", // Default role
+	}
+	if err := db.DB.Create(&member).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to invite user to room"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User invited to room"})
+}
+
+// GetInvitedRooms retrieves the list of rooms where the authenticated user is a member
+func GetInvitedRooms(c *gin.Context) {
+    userID, ok := c.Get("user_id")
+    if !ok {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+        return
+    }
+
+    userUintID, ok := userID.(uint)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID type"})
+        return
+    }
+
+    var user db.User
+    if err := db.DB.First(&user, userUintID).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find user"})
+        return
+    }
+
+    // Retrieve room memberships
+    var roomMembers []db.RoomMember
+    if err := db.DB.Where("user_id = ?", user.UserID).Find(&roomMembers).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch room memberships"})
+        return
+    }
+
+    // Extract room IDs from memberships
+    var roomIDs []string
+    for _, member := range roomMembers {
+        roomIDs = append(roomIDs, member.RoomID)
+    }
+
+    // Retrieve room details for the room IDs
+    var rooms []db.Room
+    if len(roomIDs) > 0 {
+        if err := db.DB.Where("room_id IN ?", roomIDs).Find(&rooms).Error; err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch rooms"})
+            return
+        }
+    }
+
+    c.JSON(http.StatusOK, gin.H{"rooms": rooms})
+}
