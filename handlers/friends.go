@@ -31,41 +31,51 @@ func GetFriends(c *gin.Context) {
 }
 
 func AddFriend(c *gin.Context) {
-	userID, _ := c.Get("user_id") // *Middleware should set user_id
-	uid := userID.(uint)
+    userID, exists := c.Get("user_id") // Middleware sets user_id
+    if !exists {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+        return
+    }
 
-	var req struct {
-		FriendUsername string `json:"friend_username" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-		return
-	}
+    uid := userID.(uint)
 
-	// find friend username
-	var friend db.User
-	if err := db.DB.Where("username = ?", req.FriendUsername).First(&friend).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Friend not found"})
-		return
-	}
+    // Find the authenticated user's UUID
+    var currentUser db.User
+    if err := db.DB.First(&currentUser, uid).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch authenticated user"})
+        return
+    }
 
-	var existingFriend db.Friend
-	if err := db.DB.Where("user_id = ? AND friend_id = ?", uid, friend.ID).First(&existingFriend).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Friend already added"})
-		return
-	}
+    var req struct {
+        FriendUsername string `json:"friend_username" binding:"required"`
+    }
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input. 'friend_username' is required"})
+        return
+    }
 
-	// add friend
-	newFriend := db.Friend{
-		UserID:   uid,
-		FriendID: friend.ID,
-	}
-	if err := db.DB.Create(&newFriend).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add friend"})
-		return
-	}
+    var friend db.User
+    if err := db.DB.Where("username = ?", req.FriendUsername).First(&friend).Error; err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User with this username not found"})
+        return
+    }
 
-	c.JSON(http.StatusOK, gin.H{"message": "Friend added"})
+    var existingFriend db.Friend
+    if err := db.DB.Where("user_id = ? AND friend_id = ?", currentUser.UserID, friend.UserID).First(&existingFriend).Error; err == nil {
+        c.JSON(http.StatusConflict, gin.H{"error": "This user is already your friend"})
+        return
+    }
+
+    newFriend := db.Friend{
+        UserID:   currentUser.UserID,
+        FriendID: friend.UserID,
+    }
+    if err := db.DB.Create(&newFriend).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add friend"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Friend successfully added", "friend": friend.Username})
 }
 
 func RemoveFriend(c *gin.Context) {

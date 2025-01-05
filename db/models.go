@@ -15,7 +15,7 @@ var DB *gorm.DB
 type User struct {
 	ID uint `gorm:"primaryKey"`
 	UserID string `gorm:"unique;not null"`  // UUID
-	Username string `gorm:"unique;not null"`  // todo rename everywhere to username
+	Username string `gorm:"unique;not null"`
 	PasswordHash string `gorm:"not null"`
 	Name string `gorm:"type:text"`  // may be null
 	Email string `gorm:"type:text"` // may be null
@@ -25,8 +25,8 @@ type User struct {
 // Friend represents a friendship between two users
 type Friend struct {
 	ID        uint      `gorm:"primaryKey"`
-	UserID    uint      `gorm:"not null"`
-	FriendID  uint      `gorm:"not null"`
+	UserID    string     `gorm:"not null"`
+	FriendID  string     `gorm:"not null"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
 
