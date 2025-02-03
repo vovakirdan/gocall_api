@@ -13,13 +13,14 @@ var DB *gorm.DB
 
 // User represents a user in the system
 type User struct {
-	ID uint `gorm:"primaryKey"`
-	UserID string `gorm:"unique;not null"`  // UUID
-	Username string `gorm:"unique;not null"`
-	PasswordHash string `gorm:"not null"`
-	Name string `gorm:"type:text"`  // may be null
-	Email string `gorm:"type:text"` // may be null
-	CreatedAt time.Time `gorm:"autoCreateTime"`
+	ID           uint      `gorm:"primaryKey"`
+	UserID       string    `gorm:"unique;not null"`
+	Username     string    `gorm:"unique;not null"`
+	PasswordHash string    `gorm:"not null"`
+	Name         string    `gorm:"type:text"`
+	Email        string    `gorm:"type:text"`
+	IsOnline     bool      `gorm:"default:false"` // Stub for online status
+	CreatedAt    time.Time `gorm:"autoCreateTime"`
 }
 
 // Friend represents a friendship between two users
@@ -28,6 +29,14 @@ type Friend struct {
 	UserID    string     `gorm:"not null"`
 	FriendID  string     `gorm:"not null"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
+}
+
+type FriendRequest struct {
+	ID         uint      `gorm:"primaryKey"`
+	FromUserID string    `gorm:"not null"`
+	ToUserID   string    `gorm:"not null"`
+	Status     string    `gorm:"default:'pending';not null"` // pending, accepted, declined
+	CreatedAt  time.Time `gorm:"autoCreateTime"`
 }
 
 // Room represents a room
@@ -59,7 +68,13 @@ func InitDatabase(path string) {
 	}
 
 	// Auto-migrate all models
-	err = DB.AutoMigrate(&User{}, &Friend{}, &Room{}, &RoomMember{})
+	err = DB.AutoMigrate(
+		&User{},
+		&Friend{},
+		&FriendRequest{},
+		&Room{},
+		&RoomMember{},
+	)
 	if err != nil {
 		log.Fatal("Failed to migrate database schema:", err)
 	}

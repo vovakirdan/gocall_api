@@ -64,6 +64,9 @@ func main() {
 			protected.GET("/friends", handlers.GetFriends)
 			protected.POST("/friends/add", handlers.AddFriend)
 			protected.DELETE("/friends/remove", handlers.RemoveFriend)
+			protected.POST("/friends/request", handlers.RequestFriend)
+			protected.POST("/friends/accept", handlers.AcceptFriendRequest)
+			protected.POST("/friends/decline", handlers.DeclineFriendRequest)
 			// --------ROOMS-------------------------
 			protected.GET("/rooms", handlers.GetRooms)
 			protected.POST("/rooms/create", handlers.CreateRoom)
@@ -74,7 +77,6 @@ func main() {
 			protected.GET("/rooms/name", handlers.GetRoomByName)
 			protected.POST("/rooms/invite", handlers.InviteUserToRoom)
 			protected.GET("/rooms/invited", handlers.GetInvitedRooms)
-			// protected.GET("/rooms/:id/exists", handlers.RoomExists)
 		}
 	}
 
