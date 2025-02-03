@@ -59,6 +59,16 @@ type RoomMember struct {
 	JoinedAt  time.Time `gorm:"autoCreateTime"`
 }
 
+// For inviting registered users to a room (pending, accepted, declined)
+type RoomInvite struct {
+	ID            uint      `gorm:"primaryKey"`
+	RoomID        string    `gorm:"not null"`
+	InviterUserID string    `gorm:"not null"`
+	InvitedUserID string    `gorm:"not null"`
+	Status        string    `gorm:"default:'pending';not null"`
+	CreatedAt     time.Time `gorm:"autoCreateTime"`
+}
+
 // InitDatabase initializes the SQLite database using GORM
 func InitDatabase(path string) {
 	var err error
@@ -74,6 +84,7 @@ func InitDatabase(path string) {
 		&FriendRequest{},
 		&Room{},
 		&RoomMember{},
+		&RoomInvite{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database schema:", err)
