@@ -68,7 +68,8 @@ func main() {
 			// Users
 			protected.GET("/user/id", handlers.GetUserID)
 			protected.GET("/friends/search", handlers.SearchUsers)
-
+			protected.GET("/user/:uuid", handlers.GetUserByUUID)
+			
 			// Friends
 			protected.GET("/friends", handlers.GetFriends)
 			protected.POST("/friends/add", handlers.AddFriend)

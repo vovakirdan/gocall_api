@@ -13,60 +13,60 @@ var DB *gorm.DB
 
 // User represents a user in the system
 type User struct {
-	ID           uint      `gorm:"primaryKey"`
-	UserID       string    `gorm:"unique;not null"`
-	Username     string    `gorm:"unique;not null"`
-	PasswordHash string    `gorm:"not null"`
-	Name         string    `gorm:"type:text"`
-	Email        string    `gorm:"type:text"`
-	IsOnline     bool      `gorm:"default:false"` // Stub for online status
-	CreatedAt    time.Time `gorm:"autoCreateTime"`
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	UserID       string    `gorm:"unique;not null" json:"user_id"`
+	Username     string    `gorm:"unique;not null" json:"username"`
+	PasswordHash string    `gorm:"not null" json:"password_hash"`
+	Name         string    `gorm:"type:text" json:"name"`
+	Email        string    `gorm:"type:text" json:"email"`
+	IsOnline     bool      `gorm:"default:false" json:"is_online"` // Stub for online status
+	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
 // Friend represents a friendship between two users
 type Friend struct {
-	ID        uint      `gorm:"primaryKey"`
-	UserID    string     `gorm:"not null"`
-	FriendID  string     `gorm:"not null"`
-	CreatedAt time.Time `gorm:"autoCreateTime"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    string     `gorm:"not null" json:"user_id"`
+	FriendID  string     `gorm:"not null" json:"friend_id"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
 type FriendRequest struct {
-	ID         uint      `gorm:"primaryKey"`
-	FromUserID string    `gorm:"not null"`
-	ToUserID   string    `gorm:"not null"`
-	Status     string    `gorm:"default:'pending';not null"` // pending, accepted, declined
-	CreatedAt  time.Time `gorm:"autoCreateTime"`
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	FromUserID string    `gorm:"not null" json:"from_user_id"`
+	ToUserID   string    `gorm:"not null" json:"to_user_id"`
+	Status     string    `gorm:"default:'pending';not null" json:"status"` // pending, accepted, declined
+	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
 // Room represents a room
 type Room struct {
-	ID        uint      `gorm:"primaryKey"`
-	RoomID    string    `gorm:"unique;not null"` // UUID
-	UserID    string    `gorm:"not null"`       // Creator's user UUID
-	Name      string    `gorm:"not null"`
-	Type      string    `gorm:"not null"`       // public, private, secret
-	Password  string    `gorm:"type:text"`      // null if not password-protected
-	CreatedAt time.Time `gorm:"autoCreateTime"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	RoomID    string    `gorm:"unique;not null" json:"room_id"` // UUID
+	UserID    string    `gorm:"not null" json:"user_id"`       // Creator's user UUID
+	Name      string    `gorm:"not null" json:"name"`
+	Type      string    `gorm:"not null" json:"type"`       // public, private, secret
+	Password  string    `gorm:"type:text" json:"password"`      // null if not password-protected
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
 // RoomMember represents a member in a room
 type RoomMember struct {
-	ID        uint      `gorm:"primaryKey"`
-	RoomID    string    `gorm:"not null"`       // Room's UUID
-	UserID    string    `gorm:"not null"`       // User's UUID
-	Role      string    `gorm:"not null"`       // Role in the room (admin, member, viewer)
-	JoinedAt  time.Time `gorm:"autoCreateTime"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	RoomID    string    `gorm:"not null" json:"room_id"`       // Room's UUID
+	UserID    string    `gorm:"not null" json:"user_id"`       // User's UUID
+	Role      string    `gorm:"not null" json:"role"`       // Role in the room (admin, member, viewer)
+	JoinedAt  time.Time `gorm:"autoCreateTime" json:"joined_at"`
 }
 
 // For inviting registered users to a room (pending, accepted, declined)
 type RoomInvite struct {
-	ID            uint      `gorm:"primaryKey"`
-	RoomID        string    `gorm:"not null"`
-	InviterUserID string    `gorm:"not null"`
-	InvitedUserID string    `gorm:"not null"`
-	Status        string    `gorm:"default:'pending';not null"`
-	CreatedAt     time.Time `gorm:"autoCreateTime"`
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	RoomID        string    `gorm:"not null" json:"room_id"`
+	InviterUserID string    `gorm:"not null" json:"inviter_user_id"`
+	InvitedUserID string    `gorm:"not null" json:"invited_user_id"`
+	Status        string    `gorm:"default:'pending';not null" json:"status"`
+	CreatedAt     time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
 // InitDatabase initializes the SQLite database using GORM
