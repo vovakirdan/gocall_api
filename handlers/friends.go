@@ -301,3 +301,27 @@ func DeclineFriendRequest(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Friend request declined"})
 }
+
+// Get friend requests
+func GetFriendRequests(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+	uid := userID.(uint)
+
+	var currentUser db.User
+	if err := db.DB.First(&currentUser, uid).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not find user"})
+		return
+	}
+
+	var friendRequests []db.FriendRequest
+	if err := db.DB.Where("to_user_id = ? AND status = 'pending'", currentUser.UserID).Find(&friendRequests).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not fetch friend requests"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"friend_requests": friendRequests})
+}

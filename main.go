@@ -76,7 +76,8 @@ func main() {
 			protected.POST("/friends/request", handlers.RequestFriend)
 			protected.POST("/friends/accept", handlers.AcceptFriendRequest)
 			protected.POST("/friends/decline", handlers.DeclineFriendRequest)
-
+			protected.GET("/friends/requests", handlers.GetFriendRequests)
+			
 			// Rooms
 			protected.GET("/rooms/mine", handlers.GetMyRooms)
 			protected.POST("/rooms/create", handlers.CreateRoom)
