@@ -11,9 +11,10 @@ import (
 
 // Struct for getting friend data with online status
 type FriendUser struct {
-	ID       uint
-	Username string
-	IsOnline bool
+	ID       uint   `json:"id"`
+	Username string `json:"username"`
+	IsOnline bool   `json:"is_online"`
+	UserID string `json:"user_id"`
 }
 
 // GetFriends returns all accepted friends
@@ -33,7 +34,7 @@ func GetFriends(c *gin.Context) {
 
 	var friends []FriendUser
 	err := db.DB.Raw(`
-		SELECT DISTINCT u.id, u.username, u.is_online
+		SELECT DISTINCT u.id, u.username, u.is_online, u.user_id
 		FROM users u
 		INNER JOIN friends f
 		ON (f.friend_id = u.user_id AND f.user_id = ?)
