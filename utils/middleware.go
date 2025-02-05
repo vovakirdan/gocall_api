@@ -96,3 +96,17 @@ func RefreshToken(c *gin.Context) {
 
 	c.JSON(200, gin.H{"token": newToken})
 }
+
+func ValidateToken(c *gin.Context) {
+	tokenString := c.GetHeader("Authorization")[7:] // remove "Bearer "
+
+	claims := jwt.MapClaims{}
+	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(jwtKey), nil
+	})
+
+	if err != nil {
+		c.JSON(401, gin.H{"error": "Invalid or expired token"})
+		return
+	}
+}

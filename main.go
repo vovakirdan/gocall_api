@@ -51,6 +51,7 @@ func main() {
 		publicAPI.POST("/auth/login", handlers.Login)
 		publicAPI.POST("/auth/register", handlers.Register)
 		publicAPI.POST("/auth/refresh", utils.RefreshToken)
+		publicAPI.POST("/auth/validate", utils.ValidateToken)
 
 		// Public check if a room exists
 		publicAPI.GET("/rooms/:id/exists", handlers.RoomExists)
