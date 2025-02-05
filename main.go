@@ -62,6 +62,9 @@ func main() {
 		// Public route to get room info if it's public
 		publicAPI.GET("/rooms/:id", handlers.GetRoomByID)
 
+		// Public route to ping-pong
+		publicAPI.GET("/ping", utils.PingPong)
+
 		// With auth
 		protected := publicAPI.Group("/")
 		protected.Use(utils.JWTMiddleware())

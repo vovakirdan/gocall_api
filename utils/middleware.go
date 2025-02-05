@@ -110,3 +110,7 @@ func ValidateToken(c *gin.Context) {
 		return
 	}
 }
+
+func PingPong(c *gin.Context) {  // todo move it to some other file
+	c.JSON(http.StatusOK, gin.H{"message": "pong"})
+}
