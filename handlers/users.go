@@ -51,3 +51,24 @@ func GetUserByUUID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"user": users})
 }
+
+// GetUserByToken returns the user info by token
+func GetUserByToken(c *gin.Context) {
+    userID := c.MustGet("user_id").(uint) // todo rename user_id to id; userID is the user's UUID, id is the user's ID (integer)
+    var user db.User
+
+    if err := db.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "id":        user.ID,
+        "user_id":   user.UserID,
+        "username":  user.Username,
+        "name":      user.Name,
+        "email":     user.Email,
+        "is_online": user.IsOnline,
+        "created_at": user.CreatedAt,
+    })
+}

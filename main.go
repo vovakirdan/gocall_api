@@ -70,6 +70,7 @@ func main() {
 			protected.GET("/user/id", handlers.GetUserID)
 			protected.GET("/friends/search", handlers.SearchUsers)
 			protected.GET("/user/:uuid", handlers.GetUserByUUID)
+			protected.GET("/user/me", handlers.GetUserByToken)
 			
 			// Friends
 			protected.GET("/friends", handlers.GetFriends)
