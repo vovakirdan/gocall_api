@@ -28,6 +28,7 @@ type Friend struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	UserID    string     `gorm:"not null" json:"user_id"`
 	FriendID  string     `gorm:"not null" json:"friend_id"`
+	IsPinned  bool      `gorm:"default:false" json:"is_pinned"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
