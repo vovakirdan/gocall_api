@@ -15,6 +15,8 @@ type FriendUser struct {
 	Username string `json:"username"`
 	IsOnline bool   `json:"is_online"`
 	UserID string `json:"user_id"`
+	IsPinned  bool   `json:"is_pinned"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // GetFriends returns all accepted friends
@@ -34,12 +36,12 @@ func GetFriends(c *gin.Context) {
 
 	var friends []FriendUser
 	err := db.DB.Raw(`
-		SELECT DISTINCT u.id, u.username, u.is_online, u.user_id
+		SELECT DISTINCT u.id, u.username, u.is_online, u.user_id, f.is_pinned, f.created_at
 		FROM users u
-		INNER JOIN friends f
+		JOIN friends f
 		ON (f.friend_id = u.user_id AND f.user_id = ?)
-		OR (f.user_id = u.user_id AND f.friend_id = ?)
 	`, currentUser.UserID, currentUser.UserID).Scan(&friends).Error
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch friends"})
 		return
@@ -458,26 +460,13 @@ func GetPinnedFriends(c *gin.Context) {
 		return
 	}
 
-	// We might want to return the pinnedFriends plus their usernames, etc.
-	// We only have user_id & friend_id, so we can do a join or a loop to fetch details.
-	// For example:
-	type PinnedFriendResponse struct {
-		ID        uint   `json:"id"`
-		UserID    string `json:"user_id"`
-		FriendID  string `json:"friend_id"`
-		Username  string `json:"username"`
-		IsPinned  bool   `json:"is_pinned"`
-		CreatedAt time.Time `json:"created_at"`
-	}
-
-	var result []PinnedFriendResponse
+	var result []FriendUser
 	for _, pf := range pinnedFriends {
 		var friendUser db.User
 		if err := db.DB.Where("user_id = ?", pf.FriendID).First(&friendUser).Error; err == nil {
-			result = append(result, PinnedFriendResponse{
+			result = append(result, FriendUser{
 				ID:        pf.ID,
-				UserID:    pf.UserID,
-				FriendID:  pf.FriendID,
+				UserID:    pf.FriendID,
 				Username:  friendUser.Username,
 				IsPinned:  pf.IsPinned,
 				CreatedAt: pf.CreatedAt,
