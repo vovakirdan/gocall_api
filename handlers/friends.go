@@ -326,3 +326,118 @@ func GetFriendRequests(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"friend_requests": friendRequests})
 }
+
+// pin friend
+// request body: { "friend_id": 1 }
+func PinFriend(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+	uid := userID.(uint)
+
+	var currentUser db.User
+	if err := db.DB.First(&currentUser, uid).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not find user"})
+		return
+	}
+
+	var req struct {
+		FriendID uint `json:"friend_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	var friend db.User
+	if err := db.DB.Where("user_id = ?", req.FriendID).First(&friend).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Friend not found"})
+		return
+	}
+
+	var existingFriend db.Friend
+	if err := db.DB.Where("user_id = ? AND friend_id = ?", currentUser.UserID, friend.UserID).First(&existingFriend).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Friend already pinned"})
+		return
+	}
+
+	newFriend := db.Friend{
+		UserID:   currentUser.UserID,
+		FriendID: friend.UserID,
+		CreatedAt: time.Now(),
+	}
+	if err := db.DB.Create(&newFriend).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not pin friend"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Friend pinned"})
+}
+
+// unpin friend
+// request body: { "friend_id": 1 }
+func UnpinFriend(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+	uid := userID.(uint)
+
+	var currentUser db.User
+	if err := db.DB.First(&currentUser, uid).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not find user"})
+		return
+	}
+
+	var req struct {
+		FriendID uint `json:"friend_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	var friend db.User
+	if err := db.DB.Where("user_id = ?", req.FriendID).First(&friend).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Friend not found"})
+		return
+	}
+
+	var existingFriend db.Friend
+	if err := db.DB.Where("user_id = ? AND friend_id = ?", currentUser.UserID, friend.UserID).First(&existingFriend).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Friend not pinned"})
+		return
+	}
+
+	db.DB.Delete(&existingFriend)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Friend unpinned"})
+}
+
+// get pinned friends
+func GetPinnedFriends(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+	uid := userID.(uint)
+
+	var currentUser db.User
+	if err := db.DB.First(&currentUser, uid).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not find user"})
+		return
+	}
+
+	var pinnedFriends []db.Friend
+	if err := db.DB.Where("user_id = ?", currentUser.UserID).Find(&pinnedFriends).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not fetch pinned friends"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"pinned_friends": pinnedFriends})
+}
+

@@ -86,6 +86,9 @@ func main() {
 			protected.POST("/friends/accept", handlers.AcceptFriendRequest)
 			protected.POST("/friends/decline", handlers.DeclineFriendRequest)
 			protected.GET("/friends/requests", handlers.GetFriendRequests)
+			protected.POST("/friends/pin", handlers.PinFriend)
+			protected.DELETE("/friends/unpin", handlers.UnpinFriend)
+			protected.GET("/friends/pinned", handlers.GetPinnedFriends)
 			
 			// Rooms
 			protected.GET("/rooms/mine", handlers.GetMyRooms)
