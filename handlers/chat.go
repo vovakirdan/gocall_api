@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"GoCall_api/db"
-
+	"GoCall_api/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
@@ -30,13 +30,21 @@ var chatClients = struct {
 
 // HandleChatWebSocket обрабатывает WebSocket-соединение
 func HandleChatWebSocket(c *gin.Context) {
-	// Из middleware мы получаем int (ID в БД).
-	// Найдём пользователя, чтобы получить его UUID (UserID).
-	dbUserID := c.MustGet("user_id").(uint)
+	tokenString := c.Query("token")
+	if tokenString == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is required"})
+		return
+	}
+
+	userID, err := utils.DecodeJWT(tokenString)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
 
 	// Ищем пользователя в БД
 	var user db.User
-	if err := db.DB.First(&user, dbUserID).Error; err != nil {
+	if err := db.DB.First(&user, userID).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in DB"})
 		return
 	}
@@ -134,7 +142,7 @@ func areFriends(user1UUID, user2UUID string) bool {
 		Where("(user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)",
 			user1UUID, user2UUID, user2UUID, user1UUID).
 		Count(&count).Error; err != nil {
-		if err != gorm.ErrRecordNotFound && err != nil {
+		if err != gorm.ErrRecordNotFound {
 			log.Println("DB error while checking friendship:", err)
 			return false
 		}

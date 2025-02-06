@@ -65,6 +65,9 @@ func main() {
 		// Public route to ping-pong
 		publicAPI.GET("/ping", utils.PingPong)
 
+		// Chat
+		publicAPI.GET("/chat/ws", handlers.HandleChatWebSocket)
+
 		// With auth
 		protected := publicAPI.Group("/")
 		protected.Use(utils.JWTMiddleware())
@@ -96,9 +99,6 @@ func main() {
 			protected.POST("/rooms/invite/accept", handlers.AcceptRoomInvite)
 			protected.POST("/rooms/invite/decline", handlers.DeclineRoomInvite)
 			protected.GET("/rooms/invites", handlers.GetRoomInvites)
-
-			// Chat
-			protected.GET("/chat/ws", handlers.HandleChatWebSocket)
 		}
 	}
 
