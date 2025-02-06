@@ -96,6 +96,9 @@ func main() {
 			protected.POST("/rooms/invite/accept", handlers.AcceptRoomInvite)
 			protected.POST("/rooms/invite/decline", handlers.DeclineRoomInvite)
 			protected.GET("/rooms/invites", handlers.GetRoomInvites)
+
+			// Chat
+			protected.GET("/chat/ws", handlers.HandleChatWebSocket)
 		}
 	}
 

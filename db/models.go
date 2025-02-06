@@ -69,6 +69,15 @@ type RoomInvite struct {
 	CreatedAt     time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
+// Message хранит историю текстовых сообщений
+type Message struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	SenderID   string    `gorm:"not null" json:"sender_id"`   // UUID отправителя
+	ReceiverID string    `gorm:"not null" json:"receiver_id"` // UUID получателя
+	Text       string    `gorm:"type:text" json:"text"`
+	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+
 // InitDatabase initializes the SQLite database using GORM
 func InitDatabase(path string) {
 	var err error
@@ -85,6 +94,7 @@ func InitDatabase(path string) {
 		&Room{},
 		&RoomMember{},
 		&RoomInvite{},
+		&Message{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database schema:", err)
