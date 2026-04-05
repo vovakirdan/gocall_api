@@ -1,10 +1,10 @@
 package main
 
 import (
-	"os"
 	"errors"
 	"io/fs"
 	"log"
+	"os"
 	"strings"
 
 	"GoCall_api/db"
@@ -17,7 +17,8 @@ import (
 
 func main() {
 	// ENV INIT
-	err := utils.CheckEnvLoaded(); if err != nil {
+	err := utils.CheckEnvLoaded()
+	if err != nil {
 		log.Fatal(err)
 	}
 	// --------------------------------
@@ -38,12 +39,12 @@ func main() {
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
-        AllowOrigins:     strings.Split(os.Getenv("ALLOW_ORIGINS"), ","), // Allow sources. By default: http://127.0.0.1:1420 http://localhost:1420
-        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:	  []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
-        ExposeHeaders:    []string{"Content-Length"},
-        AllowCredentials: true,
-    }))
+		AllowOrigins:     strings.Split(os.Getenv("ALLOW_ORIGINS"), ","), // Allow sources. By default: http://127.0.0.1:1420 http://localhost:1420
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-Client-Type"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	publicAPI := router.Group("/api")
 	{
@@ -77,7 +78,7 @@ func main() {
 			protected.GET("/friends/search", handlers.SearchUsers)
 			protected.GET("/user/:uuid", handlers.GetUserByUUID)
 			protected.GET("/user/me", handlers.GetUserByToken)
-			
+
 			// Friends
 			protected.GET("/friends", handlers.GetFriends)
 			protected.POST("/friends/add", handlers.AddFriend)
@@ -89,10 +90,15 @@ func main() {
 			protected.POST("/friends/pin", handlers.PinFriend)
 			protected.DELETE("/friends/unpin", handlers.UnpinFriend)
 			protected.GET("/friends/pinned", handlers.GetPinnedFriends)
-			
+
 			// Rooms
 			protected.GET("/rooms/mine", handlers.GetMyRooms)
 			protected.POST("/rooms/create", handlers.CreateRoom)
+			protected.POST("/rooms/:id/join", handlers.JoinRoom)
+			protected.GET("/rooms/:id/state", handlers.GetRoomState)
+			protected.POST("/rooms/:id/voice/join", handlers.JoinRoomVoice)
+			protected.POST("/rooms/:id/voice/leave", handlers.LeaveRoomVoice)
+			protected.PUT("/rooms/:id/voice/media", handlers.UpdateRoomVoiceMedia)
 			protected.PUT("/rooms/:id", handlers.UpdateRoom)
 			protected.DELETE("/rooms/:id", handlers.DeleteRoom)
 			protected.POST("/rooms/:id/make-admin", handlers.MakeRoomAdmin)
@@ -113,12 +119,12 @@ func main() {
 }
 
 func exists(path string) (bool, error) {
-    _, err := os.Stat(path)
-    if err == nil {
-        return true, nil
-    }
-    if errors.Is(err, fs.ErrNotExist) {
-        return false, nil
-    }
-    return false, err
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
 }

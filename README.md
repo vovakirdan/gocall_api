@@ -165,6 +165,23 @@ Protected endpoints require a valid JWT in the `Authorization: Bearer <token>` h
   Only creator/admin can do this.  
 - **DELETE /api/rooms/:id**  
   Delete the room entirely (only creator).  
+- **POST /api/rooms/:id/join**  
+  Ensure the authenticated user is a room member. Public rooms auto-add membership.  
+- **GET /api/rooms/:id/state**  
+  Returns room metadata, room members, current voice participants, and whether the current user is in room voice.  
+- **POST /api/rooms/:id/voice/join**  
+  Explicitly join the room-scoped voice channel. The initial voice presence is created with microphone, camera, and screen share disabled.  
+- **POST /api/rooms/:id/voice/leave**  
+  Explicitly leave the room-scoped voice channel while remaining a room member.  
+- **PUT /api/rooms/:id/voice/media**  
+  Update media flags for the authenticated user while in room voice.  
+  ```json
+  {
+    "is_mic_enabled": true,
+    "is_camera_enabled": false,
+    "is_screen_sharing": false
+  }
+  ```
 - **POST /api/rooms/:id/make-admin**  
   Creator can appoint an existing member as admin.  
   ```json
