@@ -113,6 +113,7 @@ func main() {
 
 			// Chat
 			protected.GET("/chat/history", handlers.GetChatHistory)
+			protected.GET("/chat/conversations", handlers.GetChatConversations)
 			// protected.GET("/chat/ws", handlers.HandleChatWebSocket)
 		}
 	}
