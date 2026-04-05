@@ -3,8 +3,11 @@ package handlers
 import (
 	"GoCall_api/db"
 	"net/http"
+	"sort"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // Check room existence (for SFU server)
@@ -97,6 +100,95 @@ func CreateRoom(c *gin.Context) {
 	db.DB.Create(&member)
 
 	c.JSON(http.StatusOK, gin.H{"roomID": room.RoomID, "name": room.Name, "type": room.Type})
+}
+
+func GetOrCreateDirectRoom(c *gin.Context) {
+	var req struct {
+		FriendUserID string `json:"friend_user_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	var currentUser db.User
+	if err := db.DB.First(&currentUser, userID.(uint)).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+		return
+	}
+
+	if req.FriendUserID == currentUser.UserID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create a direct room with yourself"})
+		return
+	}
+
+	var friend db.User
+	if err := db.DB.Where("user_id = ?", req.FriendUserID).First(&friend).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Friend user not found"})
+		return
+	}
+
+	if !areFriends(currentUser.UserID, friend.UserID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Users must be friends"})
+		return
+	}
+
+	memberIDs := []string{currentUser.UserID, friend.UserID}
+	sort.Strings(memberIDs)
+	roomName := "__direct__:" + strings.Join(memberIDs, ":")
+
+	var room db.Room
+	err := db.DB.Where("name = ? AND type = ?", roomName, "secret").First(&room).Error
+	if err != nil {
+		if err != gorm.ErrRecordNotFound {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch direct room"})
+			return
+		}
+
+		room = db.Room{
+			UserID: currentUser.UserID,
+			Name:   roomName,
+			Type:   "secret",
+		}
+		if err := db.DB.Create(&room).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create direct room"})
+			return
+		}
+	}
+
+	for index, memberID := range memberIDs {
+		role := "member"
+		if memberID == room.UserID || index == 0 {
+			role = "creator"
+		}
+
+		member := db.RoomMember{}
+		memberErr := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, memberID).First(&member).Error
+		if memberErr == nil {
+			continue
+		}
+		if memberErr != gorm.ErrRecordNotFound {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch room member"})
+			return
+		}
+
+		if err := db.DB.Create(&db.RoomMember{
+			RoomID: room.RoomID,
+			UserID: memberID,
+			Role:   role,
+		}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add direct room member"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"room": room})
 }
 
 // Get details of a room

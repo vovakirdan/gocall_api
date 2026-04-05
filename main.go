@@ -94,6 +94,7 @@ func main() {
 			// Rooms
 			protected.GET("/rooms/mine", handlers.GetMyRooms)
 			protected.POST("/rooms/create", handlers.CreateRoom)
+			protected.POST("/rooms/direct", handlers.GetOrCreateDirectRoom)
 			protected.POST("/rooms/:id/join", handlers.JoinRoom)
 			protected.GET("/rooms/:id/state", handlers.GetRoomState)
 			protected.POST("/rooms/:id/voice/join", handlers.JoinRoomVoice)
