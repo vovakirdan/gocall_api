@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"strconv"
 
 	"GoCall_api/db"
 
 	"github.com/gin-gonic/gin"
+	"github.com/livekit/protocol/auth"
 )
 
 type roomMemberState struct {
@@ -37,6 +39,14 @@ type roomStateResponse struct {
 	Members           []roomMemberState           `json:"members"`
 	VoiceParticipants []roomVoiceParticipantState `json:"voice_participants"`
 	InVoice           bool                        `json:"in_voice"`
+}
+
+type roomVoiceCredentialsResponse struct {
+	URL      string `json:"url"`
+	Token    string `json:"token"`
+	RoomName string `json:"room_name"`
+	Identity string `json:"identity"`
+	Name     string `json:"name"`
 }
 
 func resolveRoomByParam(idOrRoomID string) (*db.Room, error) {
@@ -334,5 +344,63 @@ func UpdateRoomVoiceMedia(c *gin.Context) {
 		"is_mic_enabled":    voiceParticipant.IsMicEnabled,
 		"is_camera_enabled": voiceParticipant.IsCameraEnabled,
 		"is_screen_sharing": voiceParticipant.IsScreenSharing,
+	})
+}
+
+// GetRoomVoiceCredentials returns LiveKit credentials for a room-scoped voice participant.
+func GetRoomVoiceCredentials(c *gin.Context) {
+	currentUser, ok := getAuthenticatedDBUser(c)
+	if !ok {
+		return
+	}
+
+	room, err := resolveRoomByParam(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
+		return
+	}
+
+	var voiceParticipant db.RoomVoiceParticipant
+	if err := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, currentUser.UserID).First(&voiceParticipant).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Join room voice before requesting credentials"})
+		return
+	}
+
+	livekitURL := os.Getenv("LIVEKIT_URL")
+	livekitAPIKey := os.Getenv("LIVEKIT_API_KEY")
+	livekitAPISecret := os.Getenv("LIVEKIT_API_SECRET")
+	if livekitURL == "" || livekitAPIKey == "" || livekitAPISecret == "" {
+		c.JSON(http.StatusNotImplemented, gin.H{
+			"error": "LiveKit is not configured. Set LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET.",
+		})
+		return
+	}
+
+	canPublish := true
+	canSubscribe := true
+	canPublishData := true
+	token := auth.NewAccessToken(livekitAPIKey, livekitAPISecret).
+		SetIdentity(currentUser.UserID).
+		SetName(currentUser.Username).
+		AddGrant(&auth.VideoGrant{
+			RoomJoin:       true,
+			Room:           room.RoomID,
+			CanPublish:     &canPublish,
+			CanSubscribe:   &canSubscribe,
+			CanPublishData: &canPublishData,
+		})
+
+	jwt, err := token.ToJWT()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate LiveKit token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, roomVoiceCredentialsResponse{
+		URL:      livekitURL,
+		Token:    jwt,
+		RoomName: room.RoomID,
+		Identity: currentUser.UserID,
+		Name:     currentUser.Username,
 	})
 }

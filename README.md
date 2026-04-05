@@ -173,6 +173,12 @@ Protected endpoints require a valid JWT in the `Authorization: Bearer <token>` h
   Explicitly join the room-scoped voice channel. The initial voice presence is created with microphone, camera, and screen share disabled.  
 - **POST /api/rooms/:id/voice/leave**  
   Explicitly leave the room-scoped voice channel while remaining a room member.  
+- **GET /api/rooms/:id/voice/credentials**  
+  Return room-scoped LiveKit credentials for the authenticated user. The user must already be in the room voice channel.  
+  Server configuration requires:
+  - `LIVEKIT_URL`
+  - `LIVEKIT_API_KEY`
+  - `LIVEKIT_API_SECRET`
 - **PUT /api/rooms/:id/voice/media**  
   Update media flags for the authenticated user while in room voice.  
   ```json
