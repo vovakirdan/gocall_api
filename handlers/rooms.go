@@ -32,7 +32,7 @@ func GetAllPublicRooms(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rooms": rooms})
 }
 
-// Get rooms created by authenticated user
+// Get rooms where the authenticated user is a member.
 func GetMyRooms(c *gin.Context) {
 	userID, ok := c.Get("user_id")
 	if !ok {
@@ -48,7 +48,12 @@ func GetMyRooms(c *gin.Context) {
 	}
 
 	var rooms []db.Room
-	if err := db.DB.Where("user_id = ?", currentUser.UserID).Find(&rooms).Error; err != nil {
+	if err := db.DB.
+		Table("rooms").
+		Joins("JOIN room_members ON room_members.room_id = rooms.room_id").
+		Where("room_members.user_id = ?", currentUser.UserID).
+		Order("rooms.created_at DESC").
+		Find(&rooms).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch rooms"})
 		return
 	}
