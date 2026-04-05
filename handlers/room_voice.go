@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"GoCall_api/db"
 
@@ -81,6 +83,27 @@ func getAuthenticatedDBUser(c *gin.Context) (*db.User, bool) {
 	}
 
 	return &currentUser, true
+}
+
+func resolveLiveKitPublicURL(c *gin.Context, fallback string) string {
+	if fallback != "" {
+		return fallback
+	}
+
+	scheme := "ws"
+	if strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") || c.Request.TLS != nil {
+		scheme = "wss"
+	}
+
+	host := c.GetHeader("X-Forwarded-Host")
+	if host == "" {
+		host = c.Request.Host
+	}
+	if host == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("%s://%s/rtc", scheme, host)
 }
 
 func ensureRoomMember(room *db.Room, user *db.User) (*db.RoomMember, error) {
@@ -366,7 +389,7 @@ func GetRoomVoiceCredentials(c *gin.Context) {
 		return
 	}
 
-	livekitURL := os.Getenv("LIVEKIT_URL")
+	livekitURL := resolveLiveKitPublicURL(c, os.Getenv("LIVEKIT_URL"))
 	livekitAPIKey := os.Getenv("LIVEKIT_API_KEY")
 	livekitAPISecret := os.Getenv("LIVEKIT_API_SECRET")
 	if livekitURL == "" || livekitAPIKey == "" || livekitAPISecret == "" {
