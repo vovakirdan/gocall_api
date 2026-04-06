@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"GoCall_api/db"
-	"GoCall_api/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,19 +34,14 @@ type ConversationResponse struct {
 
 // GetChatHistory returns messages between the authenticated user and `with_user`
 func GetChatHistory(c *gin.Context) {
-	tokenString := c.Query("token")
-	if tokenString == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is required"})
-		return
-	}
-	dbUserID, err := utils.DecodeJWT(tokenString)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
 
 	var currentUser db.User
-	if err := db.DB.First(&currentUser, dbUserID).Error; err != nil {
+	if err := db.DB.First(&currentUser, userID.(uint)).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
