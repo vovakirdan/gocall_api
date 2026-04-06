@@ -103,7 +103,7 @@ func resolveLiveKitPublicURL(c *gin.Context, fallback string) string {
 		return ""
 	}
 
-	return fmt.Sprintf("%s://%s/rtc", scheme, host)
+	return fmt.Sprintf("%s://%s", scheme, host)
 }
 
 func ensureRoomMember(room *db.Room, user *db.User) (*db.RoomMember, error) {
