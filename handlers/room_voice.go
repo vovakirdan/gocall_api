@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/livekit/protocol/auth"
+	"gorm.io/gorm"
 )
 
 type roomMemberState struct {
@@ -87,7 +89,11 @@ func getAuthenticatedDBUser(c *gin.Context) (*db.User, bool) {
 
 	var currentUser db.User
 	if err := db.DB.First(&currentUser, userID.(uint)).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch authenticated user"})
+		}
 		return nil, false
 	}
 
