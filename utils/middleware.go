@@ -64,6 +64,7 @@ func JWTMiddleware() gin.HandlerFunc {
 	}
 }
 
+// RefreshToken issues a new JWT with an extended expiration window.
 func RefreshToken(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")[7:] // remove "Bearer "
 
@@ -97,6 +98,7 @@ func RefreshToken(c *gin.Context) {
 	c.JSON(200, gin.H{"token": newToken})
 }
 
+// ValidateToken verifies the Authorization token and returns 401 on failure.
 func ValidateToken(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")[7:] // remove "Bearer "
 
@@ -111,6 +113,7 @@ func ValidateToken(c *gin.Context) {
 	}
 }
 
+// PingPong returns a lightweight healthcheck response.
 func PingPong(c *gin.Context) { // todo move it to some other file
 	c.JSON(http.StatusOK, gin.H{"message": "pong"})
 }

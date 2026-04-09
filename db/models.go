@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// DB is the shared GORM database handle for the application.
 var DB *gorm.DB
 
 // User represents a user in the system
@@ -32,6 +33,7 @@ type Friend struct {
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
+// FriendRequest stores a pending or resolved friend request.
 type FriendRequest struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	FromUserID string    `gorm:"not null" json:"from_user_id"`
@@ -60,7 +62,7 @@ type RoomMember struct {
 	JoinedAt time.Time `gorm:"autoCreateTime" json:"joined_at"`
 }
 
-// For inviting registered users to a room (pending, accepted, declined)
+// RoomInvite stores a pending or resolved invitation to a room.
 type RoomInvite struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	RoomID        string    `gorm:"not null" json:"room_id"`
@@ -83,7 +85,7 @@ type RoomVoiceParticipant struct {
 	UpdatedAt       time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
-// Message хранит историю текстовых сообщений
+// Message stores a direct chat message between two users.
 type Message struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	SenderID   string    `gorm:"not null" json:"sender_id"`   // UUID отправителя
@@ -116,12 +118,13 @@ func InitDatabase(path string) {
 	}
 }
 
-// BeforeCreate hook to generate UUID for Room
+// BeforeCreate assigns a UUID before a room is persisted.
 func (r *Room) BeforeCreate(tx *gorm.DB) (err error) {
 	r.RoomID = uuid.New().String()
 	return
 }
 
+// BeforeCreate assigns a UUID before a user is persisted.
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 	u.UserID = uuid.New().String()
 	return

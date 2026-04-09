@@ -116,6 +116,7 @@ func ensureRoomMember(room *db.Room, user *db.User) (*db.RoomMember, error) {
 }
 
 // JoinRoom ensures the authenticated user is a member of the room.
+// JoinRoom ensures the authenticated user is a member of the room.
 // Public rooms auto-create membership, private/secret rooms require existing membership.
 func JoinRoom(c *gin.Context) {
 	currentUser, ok := getAuthenticatedDBUser(c)

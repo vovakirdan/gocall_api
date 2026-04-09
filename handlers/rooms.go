@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// Check room existence (for SFU server)
+// RoomExists reports whether a room with the given ID exists.
 func RoomExists(c *gin.Context) {
 	roomID := c.Param("id")
 	var room db.Room
@@ -21,7 +21,7 @@ func RoomExists(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"exists": true})
 }
 
-// Get all public rooms (no auth required)
+// GetAllPublicRooms returns all public rooms without requiring auth.
 func GetAllPublicRooms(c *gin.Context) {
 	var rooms []db.Room
 	err := db.DB.Where("type = ?", "public").Find(&rooms).Error
@@ -61,7 +61,7 @@ func GetMyRooms(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rooms": rooms})
 }
 
-// Create a new room
+// CreateRoom creates a new room and adds the creator as a member.
 func CreateRoom(c *gin.Context) {
 	var req struct {
 		Name     string `json:"name" binding:"required,min=3,max=50"`
@@ -107,6 +107,7 @@ func CreateRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"roomID": room.RoomID, "name": room.Name, "type": room.Type})
 }
 
+// GetOrCreateDirectRoom returns the existing direct room between two friends or creates one.
 func GetOrCreateDirectRoom(c *gin.Context) {
 	var req struct {
 		FriendUserID string `json:"friend_user_id" binding:"required"`
@@ -196,9 +197,7 @@ func GetOrCreateDirectRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"room": room})
 }
 
-// Get details of a room
-// Public: can be viewed by anyone
-// Private/secret: only members (creator/admin/member) can view
+// GetRoomByID returns room details, enforcing visibility by room type.
 func GetRoomByID(c *gin.Context) {
 	roomID := c.Param("id")
 
@@ -237,7 +236,7 @@ func GetRoomByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"room": room})
 }
 
-// Update existing room (creator/admin only)
+// UpdateRoom updates mutable room fields for creator or admins.
 func UpdateRoom(c *gin.Context) {
 	roomID := c.Param("id")
 	var req struct {
@@ -288,7 +287,7 @@ func UpdateRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"roomID": room.RoomID, "name": room.Name, "type": room.Type})
 }
 
-// Delete a room (creator only)
+// DeleteRoom removes a room and its related membership/invite records.
 func DeleteRoom(c *gin.Context) {
 	roomID := c.Param("id")
 
@@ -325,7 +324,7 @@ func DeleteRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Room deleted"})
 }
 
-// Assign admin role (creator only)
+// MakeRoomAdmin promotes an existing room member to admin.
 func MakeRoomAdmin(c *gin.Context) {
 	var req struct {
 		UserToAdmin string `json:"user_id" binding:"required"`
@@ -376,7 +375,7 @@ func MakeRoomAdmin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User assigned as admin"})
 }
 
-// Invite registered user to room (creator/admin only)
+// InviteUserToRoom creates a pending invitation for a registered user.
 func InviteUserToRoom(c *gin.Context) {
 	var req struct {
 		RoomID   string `json:"roomID" binding:"required"`
@@ -441,7 +440,7 @@ func InviteUserToRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Invitation sent"})
 }
 
-// Accept invitation
+// AcceptRoomInvite accepts a pending invitation and joins the room.
 func AcceptRoomInvite(c *gin.Context) {
 	var req struct {
 		InviteID uint `json:"invite_id" binding:"required"`
@@ -493,7 +492,7 @@ func AcceptRoomInvite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Invite accepted"})
 }
 
-// Decline invitation
+// DeclineRoomInvite declines a pending room invitation.
 func DeclineRoomInvite(c *gin.Context) {
 	var req struct {
 		InviteID uint `json:"invite_id" binding:"required"`
@@ -534,7 +533,7 @@ func DeclineRoomInvite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Invite declined"})
 }
 
-// Get all invites (pending or accepted)
+// GetRoomInvites returns pending and accepted invites for the authenticated user.
 func GetRoomInvites(c *gin.Context) {
 	userID, ok := c.Get("user_id")
 	if !ok {

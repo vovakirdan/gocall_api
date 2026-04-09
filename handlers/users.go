@@ -26,6 +26,7 @@ func GetUserID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"userID": user.UserID})
 }
 
+// SearchUsers returns a limited username search result set.
 func SearchUsers(c *gin.Context) {
 	query := c.Query("q")
 	if query == "" {
@@ -61,7 +62,7 @@ func GetUserByUUID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": user})
 }
 
-// GetUserByToken returns the user info by token
+// GetUserByToken returns the authenticated user's public profile payload.
 func GetUserByToken(c *gin.Context) {
 	userID := c.MustGet("user_id").(uint) // todo rename user_id to id; userID is the user's UUID, id is the user's ID (integer)
 	var user db.User

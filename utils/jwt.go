@@ -12,6 +12,7 @@ func signingKey() []byte {
 	return []byte(os.Getenv(SECRET_KEY))
 }
 
+// GenerateJWT creates a signed JWT for the given numeric user ID.
 func GenerateJWT(userID int) (string, error) {
 	claims := &jwt.MapClaims{
 		"user_id": userID,
@@ -23,6 +24,7 @@ func GenerateJWT(userID int) (string, error) {
 	return token.SignedString(signingKey())
 }
 
+// DecodeJWT parses a token string and returns the embedded numeric user ID.
 func DecodeJWT(tokenString string) (int, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return signingKey(), nil

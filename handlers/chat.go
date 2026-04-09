@@ -28,7 +28,7 @@ var chatClients = struct {
 	clients: make(map[string]*websocket.Conn),
 }
 
-// HandleChatWebSocket обрабатывает WebSocket-соединение
+// HandleChatWebSocket upgrades the request and relays direct chat messages.
 func HandleChatWebSocket(c *gin.Context) {
 	tokenString := c.Query("token")
 	if tokenString == "" {
@@ -132,7 +132,7 @@ func HandleChatWebSocket(c *gin.Context) {
 	log.Printf("User %s disconnected\n", user.UserID)
 }
 
-// Пример функции проверки дружбы
+// areFriends reports whether two users have a stored friendship relation.
 func areFriends(user1UUID, user2UUID string) bool {
 	var count int64
 	// Ищем пару записей Friend в БД

@@ -24,6 +24,7 @@ type ChatMessageResponse struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+// ConversationResponse represents the latest message preview for one peer.
 type ConversationResponse struct {
 	UserID        string    `json:"user_id"`
 	Username      string    `json:"username"`
@@ -76,6 +77,7 @@ func GetChatHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"messages": response})
 }
 
+// GetChatConversations returns the latest direct-message preview per peer.
 func GetChatConversations(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
