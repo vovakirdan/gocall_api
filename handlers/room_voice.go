@@ -36,8 +36,17 @@ type roomVoiceParticipantState struct {
 	UpdatedAt       string `json:"updated_at"`
 }
 
+type roomStateRoom struct {
+	ID        uint   `json:"id"`
+	RoomID    string `json:"room_id"`
+	UserID    string `json:"user_id"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	CreatedAt string `json:"created_at"`
+}
+
 type roomStateResponse struct {
-	Room              db.Room                     `json:"room"`
+	Room              roomStateRoom               `json:"room"`
 	Members           []roomMemberState           `json:"members"`
 	VoiceParticipants []roomVoiceParticipantState `json:"voice_participants"`
 	InVoice           bool                        `json:"in_voice"`
@@ -231,7 +240,14 @@ func GetRoomState(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, roomStateResponse{
-		Room:              *room,
+		Room: roomStateRoom{
+			ID:        room.ID,
+			RoomID:    room.RoomID,
+			UserID:    room.UserID,
+			Name:      room.Name,
+			Type:      room.Type,
+			CreatedAt: room.CreatedAt.Format(http.TimeFormat),
+		},
 		Members:           memberStates,
 		VoiceParticipants: voiceStates,
 		InVoice:           inVoice,
