@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/livekit/protocol/auth"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type roomMemberState struct {
@@ -289,19 +290,6 @@ func JoinRoomVoice(c *gin.Context) {
 		return
 	}
 
-	var existing db.RoomVoiceParticipant
-	if err := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, currentUser.UserID).First(&existing).Error; err == nil {
-		c.JSON(http.StatusOK, gin.H{
-			"message":           "Already in room voice",
-			"room_id":           room.RoomID,
-			"user_id":           currentUser.UserID,
-			"is_mic_enabled":    existing.IsMicEnabled,
-			"is_camera_enabled": existing.IsCameraEnabled,
-			"is_screen_sharing": existing.IsScreenSharing,
-		})
-		return
-	}
-
 	voiceParticipant := db.RoomVoiceParticipant{
 		RoomID:          room.RoomID,
 		UserID:          currentUser.UserID,
@@ -309,8 +297,16 @@ func JoinRoomVoice(c *gin.Context) {
 		IsCameraEnabled: false,
 		IsScreenSharing: false,
 	}
-	if err := db.DB.Create(&voiceParticipant).Error; err != nil {
+	if err := db.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "room_id"}, {Name: "user_id"}},
+		DoNothing: true,
+	}).Create(&voiceParticipant).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to join room voice"})
+		return
+	}
+
+	if err := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, currentUser.UserID).First(&voiceParticipant).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch room voice participant"})
 		return
 	}
 
@@ -318,9 +314,9 @@ func JoinRoomVoice(c *gin.Context) {
 		"message":           "Joined room voice",
 		"room_id":           room.RoomID,
 		"user_id":           currentUser.UserID,
-		"is_mic_enabled":    false,
-		"is_camera_enabled": false,
-		"is_screen_sharing": false,
+		"is_mic_enabled":    voiceParticipant.IsMicEnabled,
+		"is_camera_enabled": voiceParticipant.IsCameraEnabled,
+		"is_screen_sharing": voiceParticipant.IsScreenSharing,
 	})
 }
 
