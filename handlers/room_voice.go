@@ -165,8 +165,16 @@ func JoinRoom(c *gin.Context) {
 		UserID: currentUser.UserID,
 		Role:   "member",
 	}
-	if err := db.DB.Create(&member).Error; err != nil {
+	if err := db.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "room_id"}, {Name: "user_id"}},
+		DoNothing: true,
+	}).Create(&member).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to join room"})
+		return
+	}
+
+	if err := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, currentUser.UserID).First(&member).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch room membership"})
 		return
 	}
 
