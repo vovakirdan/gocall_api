@@ -56,9 +56,9 @@ type Room struct {
 // RoomMember represents a member in a room
 type RoomMember struct {
 	ID       uint      `gorm:"primaryKey" json:"id"`
-	RoomID   string    `gorm:"not null" json:"room_id"` // Room's UUID
-	UserID   string    `gorm:"not null" json:"user_id"` // User's UUID
-	Role     string    `gorm:"not null" json:"role"`    // Role in the room (admin, member, viewer)
+	RoomID   string    `gorm:"not null;index:idx_room_member_user,unique" json:"room_id"` // Room's UUID
+	UserID   string    `gorm:"not null;index:idx_room_member_user,unique" json:"user_id"` // User's UUID
+	Role     string    `gorm:"not null" json:"role"`                                      // Role in the room (admin, member, viewer)
 	JoinedAt time.Time `gorm:"autoCreateTime" json:"joined_at"`
 }
 
