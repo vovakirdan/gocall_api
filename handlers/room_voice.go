@@ -125,6 +125,9 @@ func ensureRoomMember(room *db.Room, user *db.User) (*db.RoomMember, error) {
 	var member db.RoomMember
 	err := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, user.UserID).First(&member).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &member, nil
@@ -182,11 +185,14 @@ func GetRoomState(c *gin.Context) {
 		return
 	}
 
-	if _, err := ensureRoomMember(room, currentUser); err != nil {
-		if room.Type != "public" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Not a room member"})
-			return
-		}
+	member, err := ensureRoomMember(room, currentUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify room membership"})
+		return
+	}
+	if member == nil && room.Type != "public" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Not a room member"})
+		return
 	}
 
 	var members []db.RoomMember
@@ -273,7 +279,12 @@ func JoinRoomVoice(c *gin.Context) {
 		return
 	}
 
-	if _, err := ensureRoomMember(room, currentUser); err != nil {
+	member, err := ensureRoomMember(room, currentUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify room membership"})
+		return
+	}
+	if member == nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Not a room member"})
 		return
 	}
