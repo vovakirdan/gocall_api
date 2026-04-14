@@ -150,22 +150,23 @@ func GetOrCreateDirectRoom(c *gin.Context) {
 	roomName := "__direct__:" + strings.Join(memberIDs, ":")
 
 	var room db.Room
-	err := db.DB.Where("name = ? AND type = ?", roomName, "secret").First(&room).Error
-	if err != nil {
-		if err != gorm.ErrRecordNotFound {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch direct room"})
-			return
-		}
-
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
 		room = db.Room{
 			UserID: currentUser.UserID,
 			Name:   roomName,
 			Type:   "secret",
 		}
-		if err := db.DB.Create(&room).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create direct room"})
-			return
-		}
+
+		return tx.Where("name = ? AND type = ?", roomName, "secret").
+			Attrs(db.Room{
+				UserID: currentUser.UserID,
+				Name:   roomName,
+				Type:   "secret",
+			}).
+			FirstOrCreate(&room).Error
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch or create direct room"})
+		return
 	}
 
 	for index, memberID := range memberIDs {
