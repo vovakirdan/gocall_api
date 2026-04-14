@@ -84,7 +84,12 @@ func HandleChatWebSocket(c *gin.Context) {
 
 		// (Опционально) проверяем, являются ли пользователи друзьями
 		// Если надо ограничить общение только друзьям — раскомментируйте:
-		if !areFriends(user.UserID, incoming.To) {
+		friends, err := areFriends(user.UserID, incoming.To)
+		if err != nil {
+			log.Printf("Failed to verify friendship for %s and %s: %v\n", user.UserID, incoming.To, err)
+			continue
+		}
+		if !friends {
 			log.Printf("Users %s and %s are not friends. Message blocked.\n", user.UserID, incoming.To)
 			continue
 		}
@@ -133,7 +138,7 @@ func HandleChatWebSocket(c *gin.Context) {
 }
 
 // areFriends reports whether two users have a stored friendship relation.
-func areFriends(user1UUID, user2UUID string) bool {
+func areFriends(user1UUID, user2UUID string) (bool, error) {
 	var count int64
 	// Ищем пару записей Friend в БД
 	// Friend.UserID, Friend.FriendID — это userUUID (string), а не ID (uint)
@@ -142,10 +147,10 @@ func areFriends(user1UUID, user2UUID string) bool {
 		Where("(user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)",
 			user1UUID, user2UUID, user2UUID, user1UUID).
 		Count(&count).Error; err != nil {
-		if err != gorm.ErrRecordNotFound {
-			log.Println("DB error while checking friendship:", err)
-			return false
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
 		}
+		return false, err
 	}
-	return count > 0
+	return count > 0, nil
 }

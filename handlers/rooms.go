@@ -140,7 +140,12 @@ func GetOrCreateDirectRoom(c *gin.Context) {
 		return
 	}
 
-	if !areFriends(currentUser.UserID, friend.UserID) {
+	friends, err := areFriends(currentUser.UserID, friend.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify friendship"})
+		return
+	}
+	if !friends {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Users must be friends"})
 		return
 	}
