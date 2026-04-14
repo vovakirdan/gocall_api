@@ -414,6 +414,9 @@ func UpdateRoomVoiceMedia(c *gin.Context) {
 
 // GetRoomVoiceCredentials returns LiveKit credentials for a room-scoped voice participant.
 func GetRoomVoiceCredentials(c *gin.Context) {
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	c.Header("Pragma", "no-cache")
+
 	currentUser, ok := getAuthenticatedDBUser(c)
 	if !ok {
 		return

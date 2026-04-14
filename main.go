@@ -99,7 +99,7 @@ func main() {
 			protected.GET("/rooms/:id/state", handlers.GetRoomState)
 			protected.POST("/rooms/:id/voice/join", handlers.JoinRoomVoice)
 			protected.POST("/rooms/:id/voice/leave", handlers.LeaveRoomVoice)
-			protected.GET("/rooms/:id/voice/credentials", handlers.GetRoomVoiceCredentials)
+			protected.POST("/rooms/:id/voice/credentials", handlers.GetRoomVoiceCredentials)
 			protected.PUT("/rooms/:id/voice/media", handlers.UpdateRoomVoiceMedia)
 			protected.PUT("/rooms/:id", handlers.UpdateRoom)
 			protected.DELETE("/rooms/:id", handlers.DeleteRoom)
