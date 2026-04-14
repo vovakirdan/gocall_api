@@ -18,9 +18,14 @@ type userLookupResponse struct {
 
 // GetUserID returns the authenticated user's UUID
 func GetUserID(c *gin.Context) {
-	userID := c.MustGet("user_id").(uint)
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
 	var user db.User
-	if err := db.DB.First(&user, userID).Error; err != nil {
+	if err := db.DB.First(&user, userID.(uint)).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
 		return
 	}
@@ -70,10 +75,16 @@ func GetUserByUUID(c *gin.Context) {
 
 // GetUserByToken returns the authenticated user's public profile payload.
 func GetUserByToken(c *gin.Context) {
-	userID := c.MustGet("user_id").(uint) // todo rename user_id to id; userID is the user's UUID, id is the user's ID (integer)
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	// TODO: rename the context key because "user_id" stores the numeric DB user ID, not the UUID string.
 	var user db.User
 
-	if err := db.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+	if err := db.DB.Where("id = ?", userID.(uint)).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		} else {
