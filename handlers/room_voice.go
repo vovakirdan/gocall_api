@@ -364,7 +364,11 @@ func UpdateRoomVoiceMedia(c *gin.Context) {
 
 	var voiceParticipant db.RoomVoiceParticipant
 	if err := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, currentUser.UserID).First(&voiceParticipant).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User is not in room voice"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User is not in room voice"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch room voice participant"})
+		}
 		return
 	}
 
@@ -408,7 +412,11 @@ func GetRoomVoiceCredentials(c *gin.Context) {
 
 	var voiceParticipant db.RoomVoiceParticipant
 	if err := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, currentUser.UserID).First(&voiceParticipant).Error; err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Join room voice before requesting credentials"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Join room voice before requesting credentials"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch room voice participant"})
+		}
 		return
 	}
 
