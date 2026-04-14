@@ -174,9 +174,9 @@ func GetOrCreateDirectRoom(c *gin.Context) {
 		return
 	}
 
-	for index, memberID := range memberIDs {
+	for _, memberID := range memberIDs {
 		role := "member"
-		if memberID == room.UserID || index == 0 {
+		if memberID == room.UserID {
 			role = "creator"
 		}
 
