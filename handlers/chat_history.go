@@ -91,30 +91,38 @@ func GetChatConversations(c *gin.Context) {
 		return
 	}
 
+	var latestMessageIDs []uint
+	if err := db.DB.Raw(`
+		SELECT MAX(id) AS id
+		FROM messages
+		WHERE sender_id = ? OR receiver_id = ?
+		GROUP BY CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END
+	`, currentUser.UserID, currentUser.UserID, currentUser.UserID).Pluck("id", &latestMessageIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch conversations"})
+		return
+	}
+
+	if len(latestMessageIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"conversations": []ConversationResponse{}})
+		return
+	}
+
 	var messages []db.Message
 	if err := db.DB.
-		Where("sender_id = ? OR receiver_id = ?", currentUser.UserID, currentUser.UserID).
+		Where("id IN ?", latestMessageIDs).
 		Order("created_at DESC, id DESC").
 		Find(&messages).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch conversations"})
 		return
 	}
 
-	latestByPeer := make(map[string]db.Message)
+	conversations := make([]ConversationResponse, 0, len(messages))
 	for _, message := range messages {
 		peerID := message.SenderID
 		if peerID == currentUser.UserID {
 			peerID = message.ReceiverID
 		}
 
-		if _, exists := latestByPeer[peerID]; exists {
-			continue
-		}
-		latestByPeer[peerID] = message
-	}
-
-	conversations := make([]ConversationResponse, 0, len(latestByPeer))
-	for peerID, message := range latestByPeer {
 		var user db.User
 		if err := db.DB.Where("user_id = ?", peerID).First(&user).Error; err != nil {
 			continue
