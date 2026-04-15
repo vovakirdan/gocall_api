@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// DB is the shared GORM database handle for the application.
 var DB *gorm.DB
 
 // User represents a user in the system
@@ -26,12 +27,13 @@ type User struct {
 // Friend represents a friendship between two users
 type Friend struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    string     `gorm:"not null" json:"user_id"`
-	FriendID  string     `gorm:"not null" json:"friend_id"`
+	UserID    string    `gorm:"not null" json:"user_id"`
+	FriendID  string    `gorm:"not null" json:"friend_id"`
 	IsPinned  bool      `gorm:"default:false" json:"is_pinned"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
+// FriendRequest stores a pending or resolved friend request.
 type FriendRequest struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	FromUserID string    `gorm:"not null" json:"from_user_id"`
@@ -44,23 +46,23 @@ type FriendRequest struct {
 type Room struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	RoomID    string    `gorm:"unique;not null" json:"room_id"` // UUID
-	UserID    string    `gorm:"not null" json:"user_id"`       // Creator's user UUID
+	UserID    string    `gorm:"not null" json:"user_id"`        // Creator's user UUID
 	Name      string    `gorm:"not null" json:"name"`
-	Type      string    `gorm:"not null" json:"type"`       // public, private, secret
-	Password  string    `gorm:"type:text" json:"password"`      // null if not password-protected
+	Type      string    `gorm:"not null" json:"type"`      // public, private, secret
+	Password  string    `gorm:"type:text" json:"password"` // null if not password-protected
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
 // RoomMember represents a member in a room
 type RoomMember struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	RoomID    string    `gorm:"not null" json:"room_id"`       // Room's UUID
-	UserID    string    `gorm:"not null" json:"user_id"`       // User's UUID
-	Role      string    `gorm:"not null" json:"role"`       // Role in the room (admin, member, viewer)
-	JoinedAt  time.Time `gorm:"autoCreateTime" json:"joined_at"`
+	ID       uint      `gorm:"primaryKey" json:"id"`
+	RoomID   string    `gorm:"not null;index:idx_room_member_user,unique" json:"room_id"` // Room's UUID
+	UserID   string    `gorm:"not null;index:idx_room_member_user,unique" json:"user_id"` // User's UUID
+	Role     string    `gorm:"not null" json:"role"`                                      // Role in the room (admin, member, viewer)
+	JoinedAt time.Time `gorm:"autoCreateTime" json:"joined_at"`
 }
 
-// For inviting registered users to a room (pending, accepted, declined)
+// RoomInvite stores a pending or resolved invitation to a room.
 type RoomInvite struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
 	RoomID        string    `gorm:"not null" json:"room_id"`
@@ -70,7 +72,20 @@ type RoomInvite struct {
 	CreatedAt     time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
-// Message хранит историю текстовых сообщений
+// RoomVoiceParticipant represents explicit voice presence inside a room.
+// Presence is room-scoped and separate from general room membership.
+type RoomVoiceParticipant struct {
+	ID              uint      `gorm:"primaryKey" json:"id"`
+	RoomID          string    `gorm:"not null;index:idx_room_voice_user,unique" json:"room_id"`
+	UserID          string    `gorm:"not null;index:idx_room_voice_user,unique" json:"user_id"`
+	IsMicEnabled    bool      `gorm:"default:false" json:"is_mic_enabled"`
+	IsCameraEnabled bool      `gorm:"default:false" json:"is_camera_enabled"`
+	IsScreenSharing bool      `gorm:"default:false" json:"is_screen_sharing"`
+	JoinedAt        time.Time `gorm:"autoCreateTime" json:"joined_at"`
+	UpdatedAt       time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+// Message stores a direct chat message between two users.
 type Message struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	SenderID   string    `gorm:"not null" json:"sender_id"`   // UUID отправителя
@@ -95,6 +110,7 @@ func InitDatabase(path string) {
 		&Room{},
 		&RoomMember{},
 		&RoomInvite{},
+		&RoomVoiceParticipant{},
 		&Message{},
 	)
 	if err != nil {
@@ -102,12 +118,13 @@ func InitDatabase(path string) {
 	}
 }
 
-// BeforeCreate hook to generate UUID for Room
+// BeforeCreate assigns a UUID before a room is persisted.
 func (r *Room) BeforeCreate(tx *gorm.DB) (err error) {
 	r.RoomID = uuid.New().String()
 	return
 }
 
+// BeforeCreate assigns a UUID before a user is persisted.
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 	u.UserID = uuid.New().String()
 	return

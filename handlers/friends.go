@@ -9,13 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Struct for getting friend data with online status
+// FriendUser represents a friend entry returned by friendship endpoints.
 type FriendUser struct {
-	ID       uint   `json:"id"`
-	Username string `json:"username"`
-	IsOnline bool   `json:"is_online"`
-	UserID string `json:"user_id"`
-	IsPinned  bool   `json:"is_pinned"`
+	ID        uint      `json:"id"`
+	Username  string    `json:"username"`
+	IsOnline  bool      `json:"is_online"`
+	UserID    string    `json:"user_id"`
+	IsPinned  bool      `json:"is_pinned"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -50,7 +50,7 @@ func GetFriends(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"friends": friends})
 }
 
-// AddFriend (direct add; bypasses friend request flow)
+// AddFriend creates a friendship immediately without a request workflow.
 func AddFriend(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -106,7 +106,7 @@ func AddFriend(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Friend added", "friend": friend.Username})
 }
 
-// RemoveFriend
+// RemoveFriend deletes a friendship in both directions.
 func RemoveFriend(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -147,7 +147,7 @@ func RemoveFriend(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Friend removed"})
 }
 
-// Send friend request
+// RequestFriend creates a pending friend request to another user.
 func RequestFriend(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -197,7 +197,7 @@ func RequestFriend(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Friend request sent"})
 }
 
-// Accept friend request
+// AcceptFriendRequest accepts a pending friend request and creates friendships.
 func AcceptFriendRequest(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -243,14 +243,14 @@ func AcceptFriendRequest(c *gin.Context) {
 
 	// Create friendship
 	newFriend1 := db.Friend{
-		UserID:   fr.FromUserID,
-		FriendID: fr.ToUserID,
+		UserID:    fr.FromUserID,
+		FriendID:  fr.ToUserID,
 		CreatedAt: time.Now(),
 	}
 	db.DB.Create(&newFriend1)
 	newFriend2 := db.Friend{
-		UserID:   fr.ToUserID,
-		FriendID: fr.FromUserID,
+		UserID:    fr.ToUserID,
+		FriendID:  fr.FromUserID,
 		CreatedAt: time.Now(),
 	}
 	db.DB.Create(&newFriend2)
@@ -258,7 +258,7 @@ func AcceptFriendRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Friend request accepted"})
 }
 
-// Decline friend request
+// DeclineFriendRequest declines a pending friend request.
 func DeclineFriendRequest(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -305,7 +305,7 @@ func DeclineFriendRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Friend request declined"})
 }
 
-// Get friend requests
+// GetFriendRequests lists pending incoming friend requests.
 func GetFriendRequests(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -476,4 +476,3 @@ func GetPinnedFriends(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"pinned_friends": result})
 }
-

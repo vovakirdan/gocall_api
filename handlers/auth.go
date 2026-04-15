@@ -5,23 +5,26 @@ import (
 
 	"GoCall_api/db"
 	"GoCall_api/utils"
-	
+
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/go-playground/validator/v10"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var validate validator.Validate
 
+// AuthRequest contains credentials for auth endpoints.
 type AuthRequest struct {
 	Username string `json:"username" validate:"required,min=3,max=20,alphanum"`
 	Password string `json:"password" validate:"required,min=6"`
 }
 
+// InitValidator initializes request validation for auth handlers.
 func InitValidator() {
 	validate = *validator.New()
 }
 
+// Register creates a new user account.
 func Register(c *gin.Context) {
 	var req AuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -48,6 +51,7 @@ func Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "User registered", "userID": user.UserID})
 }
 
+// Login authenticates a user and returns a JWT.
 func Login(c *gin.Context) {
 	var req AuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -3,11 +3,30 @@ package handlers
 import (
 	"GoCall_api/db"
 	"net/http"
+	"sort"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-// Check room existence (for SFU server)
+func getAuthenticatedNumericUserID(c *gin.Context) (uint, bool) {
+	userID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return 0, false
+	}
+
+	uid, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authentication context"})
+		return 0, false
+	}
+
+	return uid, true
+}
+
+// RoomExists reports whether a room with the given ID exists.
 func RoomExists(c *gin.Context) {
 	roomID := c.Param("id")
 	var room db.Room
@@ -18,7 +37,7 @@ func RoomExists(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"exists": true})
 }
 
-// Get all public rooms (no auth required)
+// GetAllPublicRooms returns all public rooms without requiring auth.
 func GetAllPublicRooms(c *gin.Context) {
 	var rooms []db.Room
 	err := db.DB.Where("type = ?", "public").Find(&rooms).Error
@@ -29,14 +48,12 @@ func GetAllPublicRooms(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rooms": rooms})
 }
 
-// Get rooms created by authenticated user
+// Get rooms where the authenticated user is a member.
 func GetMyRooms(c *gin.Context) {
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
-	uid := userID.(uint)
 
 	var currentUser db.User
 	if err := db.DB.First(&currentUser, uid).Error; err != nil {
@@ -45,7 +62,12 @@ func GetMyRooms(c *gin.Context) {
 	}
 
 	var rooms []db.Room
-	if err := db.DB.Where("user_id = ?", currentUser.UserID).Find(&rooms).Error; err != nil {
+	if err := db.DB.
+		Table("rooms").
+		Joins("JOIN room_members ON room_members.room_id = rooms.room_id").
+		Where("room_members.user_id = ?", currentUser.UserID).
+		Order("rooms.created_at DESC").
+		Find(&rooms).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch rooms"})
 		return
 	}
@@ -53,7 +75,7 @@ func GetMyRooms(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"rooms": rooms})
 }
 
-// Create a new room
+// CreateRoom creates a new room and adds the creator as a member.
 func CreateRoom(c *gin.Context) {
 	var req struct {
 		Name     string `json:"name" binding:"required,min=3,max=50"`
@@ -65,12 +87,10 @@ func CreateRoom(c *gin.Context) {
 		return
 	}
 
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
-	uid := userID.(uint)
 
 	var user db.User
 	if err := db.DB.First(&user, uid).Error; err != nil {
@@ -99,9 +119,102 @@ func CreateRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"roomID": room.RoomID, "name": room.Name, "type": room.Type})
 }
 
-// Get details of a room
-// Public: can be viewed by anyone
-// Private/secret: only members (creator/admin/member) can view
+// GetOrCreateDirectRoom returns the existing direct room between two friends or creates one.
+func GetOrCreateDirectRoom(c *gin.Context) {
+	var req struct {
+		FriendUserID string `json:"friend_user_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	uid, ok := getAuthenticatedNumericUserID(c)
+	if !ok {
+		return
+	}
+
+	var currentUser db.User
+	if err := db.DB.First(&currentUser, uid).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+		return
+	}
+
+	if req.FriendUserID == currentUser.UserID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create a direct room with yourself"})
+		return
+	}
+
+	var friend db.User
+	if err := db.DB.Where("user_id = ?", req.FriendUserID).First(&friend).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Friend user not found"})
+		return
+	}
+
+	friends, err := areFriends(currentUser.UserID, friend.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify friendship"})
+		return
+	}
+	if !friends {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Users must be friends"})
+		return
+	}
+
+	memberIDs := []string{currentUser.UserID, friend.UserID}
+	sort.Strings(memberIDs)
+	roomName := "__direct__:" + strings.Join(memberIDs, ":")
+
+	var room db.Room
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		room = db.Room{
+			UserID: currentUser.UserID,
+			Name:   roomName,
+			Type:   "secret",
+		}
+
+		return tx.Where("name = ? AND type = ?", roomName, "secret").
+			Attrs(db.Room{
+				UserID: currentUser.UserID,
+				Name:   roomName,
+				Type:   "secret",
+			}).
+			FirstOrCreate(&room).Error
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch or create direct room"})
+		return
+	}
+
+	for _, memberID := range memberIDs {
+		role := "member"
+		if memberID == room.UserID {
+			role = "creator"
+		}
+
+		member := db.RoomMember{}
+		memberErr := db.DB.Where("room_id = ? AND user_id = ?", room.RoomID, memberID).First(&member).Error
+		if memberErr == nil {
+			continue
+		}
+		if memberErr != gorm.ErrRecordNotFound {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch room member"})
+			return
+		}
+
+		if err := db.DB.Create(&db.RoomMember{
+			RoomID: room.RoomID,
+			UserID: memberID,
+			Role:   role,
+		}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add direct room member"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"room": room})
+}
+
+// GetRoomByID returns room details, enforcing visibility by room type.
 func GetRoomByID(c *gin.Context) {
 	roomID := c.Param("id")
 
@@ -116,12 +229,10 @@ func GetRoomByID(c *gin.Context) {
 		return
 	}
 
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not allowed"})
 		return
 	}
-	uid := userID.(uint)
 
 	var currentUser db.User
 	if err := db.DB.First(&currentUser, uid).Error; err != nil {
@@ -140,7 +251,7 @@ func GetRoomByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"room": room})
 }
 
-// Update existing room (creator/admin only)
+// UpdateRoom updates mutable room fields for creator or admins.
 func UpdateRoom(c *gin.Context) {
 	roomID := c.Param("id")
 	var req struct {
@@ -153,12 +264,10 @@ func UpdateRoom(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("user_id")
-	if userID == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+	uid, ok := getAuthenticatedNumericUserID(c)
+	if !ok {
 		return
 	}
-	uid := userID.(uint)
 
 	var currentUser db.User
 	db.DB.First(&currentUser, uid)
@@ -191,16 +300,14 @@ func UpdateRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"roomID": room.RoomID, "name": room.Name, "type": room.Type})
 }
 
-// Delete a room (creator only)
+// DeleteRoom removes a room and its related membership/invite records.
 func DeleteRoom(c *gin.Context) {
 	roomID := c.Param("id")
 
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
-	uid := userID.(uint)
 
 	var currentUser db.User
 	db.DB.First(&currentUser, uid)
@@ -228,7 +335,7 @@ func DeleteRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Room deleted"})
 }
 
-// Assign admin role (creator only)
+// MakeRoomAdmin promotes an existing room member to admin.
 func MakeRoomAdmin(c *gin.Context) {
 	var req struct {
 		UserToAdmin string `json:"user_id" binding:"required"`
@@ -239,12 +346,10 @@ func MakeRoomAdmin(c *gin.Context) {
 	}
 	roomID := c.Param("id")
 
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
-	uid := userID.(uint)
 
 	var currentUser db.User
 	db.DB.First(&currentUser, uid)
@@ -279,7 +384,7 @@ func MakeRoomAdmin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User assigned as admin"})
 }
 
-// Invite registered user to room (creator/admin only)
+// InviteUserToRoom creates a pending invitation for a registered user.
 func InviteUserToRoom(c *gin.Context) {
 	var req struct {
 		RoomID   string `json:"roomID" binding:"required"`
@@ -290,12 +395,10 @@ func InviteUserToRoom(c *gin.Context) {
 		return
 	}
 
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
-	uid := userID.(uint)
 
 	var inviter db.User
 	if err := db.DB.First(&inviter, uid).Error; err != nil {
@@ -344,7 +447,7 @@ func InviteUserToRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Invitation sent"})
 }
 
-// Accept invitation
+// AcceptRoomInvite accepts a pending invitation and joins the room.
 func AcceptRoomInvite(c *gin.Context) {
 	var req struct {
 		InviteID uint `json:"invite_id" binding:"required"`
@@ -354,12 +457,10 @@ func AcceptRoomInvite(c *gin.Context) {
 		return
 	}
 
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
-	uid := userID.(uint)
 
 	var user db.User
 	db.DB.First(&user, uid)
@@ -396,7 +497,7 @@ func AcceptRoomInvite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Invite accepted"})
 }
 
-// Decline invitation
+// DeclineRoomInvite declines a pending room invitation.
 func DeclineRoomInvite(c *gin.Context) {
 	var req struct {
 		InviteID uint `json:"invite_id" binding:"required"`
@@ -406,12 +507,10 @@ func DeclineRoomInvite(c *gin.Context) {
 		return
 	}
 
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
-	uid := userID.(uint)
 
 	var user db.User
 	db.DB.First(&user, uid)
@@ -437,14 +536,12 @@ func DeclineRoomInvite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Invite declined"})
 }
 
-// Get all invites (pending or accepted)
+// GetRoomInvites returns pending and accepted invites for the authenticated user.
 func GetRoomInvites(c *gin.Context) {
-	userID, ok := c.Get("user_id")
+	uid, ok := getAuthenticatedNumericUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
-	uid := userID.(uint)
 
 	var user db.User
 	db.DB.First(&user, uid)

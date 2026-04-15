@@ -34,7 +34,7 @@ func JWTMiddleware() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}
-			return jwtKey, nil
+			return signingKey(), nil
 		})
 
 		if err != nil {
@@ -43,7 +43,7 @@ func JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// extract user_id from token 
+		// extract user_id from token
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
@@ -64,12 +64,13 @@ func JWTMiddleware() gin.HandlerFunc {
 	}
 }
 
+// RefreshToken issues a new JWT with an extended expiration window.
 func RefreshToken(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")[7:] // remove "Bearer "
 
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtKey), nil
+		return signingKey(), nil
 	})
 
 	if err != nil {
@@ -88,7 +89,7 @@ func RefreshToken(c *gin.Context) {
 
 	// create new token
 	claims["exp"] = time.Now().Add(expiration).Unix()
-	newToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtKey))
+	newToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(signingKey())
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to create new token"})
 		return
@@ -97,12 +98,13 @@ func RefreshToken(c *gin.Context) {
 	c.JSON(200, gin.H{"token": newToken})
 }
 
+// ValidateToken verifies the Authorization token and returns 401 on failure.
 func ValidateToken(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")[7:] // remove "Bearer "
 
 	claims := jwt.MapClaims{}
 	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtKey), nil
+		return signingKey(), nil
 	})
 
 	if err != nil {
@@ -111,6 +113,7 @@ func ValidateToken(c *gin.Context) {
 	}
 }
 
-func PingPong(c *gin.Context) {  // todo move it to some other file
+// PingPong returns a lightweight healthcheck response.
+func PingPong(c *gin.Context) { // todo move it to some other file
 	c.JSON(http.StatusOK, gin.H{"message": "pong"})
 }

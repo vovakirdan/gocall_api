@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	SECRET_KEY = "SECRET_KEY"
+	SECRET_KEY    = "SECRET_KEY"
 	ALLOW_ORIGINS = "ALLOW_ORIGINS"
 )
 
+// CheckEnvLoaded verifies that the required environment variables are available.
 func CheckEnvLoaded() error {
 	godotenv.Load()
 	if os.Getenv(SECRET_KEY) == "" {
@@ -21,6 +22,6 @@ func CheckEnvLoaded() error {
 	if os.Getenv(ALLOW_ORIGINS) == "" {
 		return errors.New("ALLOW_ORIGINS not found")
 	}
-	
+
 	return nil
 }
